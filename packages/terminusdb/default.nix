@@ -13,6 +13,8 @@
 , libclang
 , llvmPackages
 , libjwt
+# Optional features
+, withDashboard ? false  # Dashboard is deprecated, disabled by default
 }:
 
 stdenv.mkDerivation rec {
@@ -107,17 +109,19 @@ stdenv.mkDerivation rec {
       --replace-fail '-f src/bootstrap.pl' '-p foreign=src/rust -f src/bootstrap.pl' \
       --replace-fail '--quiet' ""
 
-    # Patch load_paths.pl to NOT set dashboard path at load time
-    # Instead, it will be set at runtime via environment variable
-    # This prevents the build-time path from being baked into the saved state
-    substituteInPlace src/load_paths.pl \
-      --replace-fail ':- add_dashboard_path.' \
-                     '% Dashboard path set via TERMINUSDB_DASHBOARD_PATH at runtime'
+    ${lib.optionalString withDashboard ''
+      # Patch load_paths.pl to NOT set dashboard path at load time
+      # Instead, it will be set at runtime via environment variable
+      # This prevents the build-time path from being baked into the saved state
+      substituteInPlace src/load_paths.pl \
+        --replace-fail ':- add_dashboard_path.' \
+                       '% Dashboard path set via TERMINUSDB_DASHBOARD_PATH at runtime'
 
-    # Patch cli_toplevel to set dashboard path at runtime
-    # Add the call right after getting argv
-    sed -i '/current_prolog_flag(argv, Argv),/a\    (load_paths:add_dashboard_path -> true ; true),' \
-      src/cli/main.pl
+      # Patch cli_toplevel to set dashboard path at runtime
+      # Add the call right after getting argv
+      sed -i '/current_prolog_flag(argv, Argv),/a\    (load_paths:add_dashboard_path -> true ; true),' \
+        src/cli/main.pl
+    ''}
   '';
 
   preBuild = ''
@@ -168,7 +172,7 @@ stdenv.mkDerivation rec {
     runHook preInstall
 
     mkdir -p $out/bin
-    mkdir -p $out/dashboard/assets
+    ${lib.optionalString withDashboard "mkdir -p $out/dashboard/assets"}
 
     # Install the standalone binary
     if [ -f terminusdb ]; then
@@ -178,10 +182,13 @@ stdenv.mkDerivation rec {
       exit 1
     fi
 
-    # Install dashboard files (web UI) at $out/dashboard
-    # This matches the path structure that top_level_directory expects
-    install -m644 dashboard/src/index.html $out/dashboard/
-    install -m644 dashboard/src/output.css $out/dashboard/assets/
+    ${lib.optionalString withDashboard ''
+      # Install dashboard files (web UI) at $out/dashboard
+      # This matches the path structure that top_level_directory expects
+      # Note: Dashboard is deprecated - use DFRNT Studio for production
+      install -m644 dashboard/src/index.html $out/dashboard/
+      install -m644 dashboard/src/output.css $out/dashboard/assets/
+    ''}
 
     # Create a wrapper script that properly invokes the Prolog saved state
     # The saved state is embedded in the binary, but we need to invoke it with
@@ -200,8 +207,11 @@ export TERMINUSDB_SERVER_PORT="6363"
 export TERMINUSDB_SERVER_IP="127.0.0.1"
 export PATH="${lib.makeBinPath [ git ]}:\$PATH"
 
+${lib.optionalString withDashboard ''
 # Set absolute path to dashboard - this gets read by load_paths.pl at runtime
+# Note: Dashboard is deprecated, enable only for compatibility
 export TERMINUSDB_DASHBOARD_PATH="$out/dashboard"
+''}
 
 # Run the TerminusDB binary with arguments passed after --
 # This ensures arguments go to cli_toplevel via the argv flag
@@ -221,6 +231,10 @@ EOF
       schema enforcement, and rich querying capabilities via WOQL, GraphQL, and REST APIs.
 
       Built with SWI-Prolog and a Rust storage backend for performance.
+
+      The built-in web dashboard is deprecated and disabled by default.
+      To enable it, use: pkgs.terminusdb.override { withDashboard = true; }
+      For production use, consider DFRNT Studio instead.
     '';
     homepage = "https://terminusdb.com";
     license = licenses.asl20;
