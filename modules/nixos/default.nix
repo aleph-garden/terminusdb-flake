@@ -62,7 +62,9 @@ in
         # Initialize database if dataDir is empty
         if [ ! -d "${cfg.dataDir}/db" ]; then
           echo "Initializing TerminusDB database..."
-          ${cfg.package}/bin/terminusdb store init
+          # TerminusDB requires TERMINUSDB_SERVER_DB_PATH and working directory
+          cd ${cfg.dataDir}
+          env TERMINUSDB_SERVER_DB_PATH=${cfg.dataDir} ${cfg.package}/bin/terminusdb store init
         fi
       '';
     };
