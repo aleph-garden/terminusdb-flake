@@ -12,6 +12,7 @@
 , protobuf
 , libclang
 , llvmPackages
+, libjwt
 }:
 
 stdenv.mkDerivation rec {
@@ -23,6 +24,21 @@ stdenv.mkDerivation rec {
     repo = "terminusdb";
     rev = "v${version}";
     hash = "sha256-j60mZ+coA0SL+BQsNp12aIyLkdIE7oxLzKNy7Nq0Las=";
+  };
+
+  # SWI-Prolog pack dependencies
+  tusPack = fetchFromGitHub {
+    owner = "terminusdb";
+    repo = "tus";
+    rev = "v0.0.16";
+    hash = "sha256-NQGvDFtGEXhSXIZ7dZ2r13q8hRpYXkA9/NlFKED1ANM=";
+  };
+
+  jwtPack = fetchFromGitHub {
+    owner = "terminusdb-labs";
+    repo = "jwt_io";
+    rev = "v1.0.4";
+    hash = "sha256-YywD0zg4ft075AaxgNDOuxVxQSsQjP0BXTW5YLl2TS0=";
   };
 
   # Build the Rust storage backend separately
@@ -43,7 +59,7 @@ stdenv.mkDerivation rec {
 
     # Help the linker find SWI-Prolog library
     preConfigure = ''
-      export NIX_LDFLAGS="-L${swi-prolog}/lib/swipl/lib/x86_64-linux $NIX_LDFLAGS"
+      export NIX_LDFLAGS="-L${swi-prolog}/lib $NIX_LDFLAGS"
     '';
 
     # Don't run tests during build (may require additional setup)
@@ -52,10 +68,10 @@ stdenv.mkDerivation rec {
     postInstall = ''
       # Copy the dynamic library to the output
       mkdir -p $out/lib
-      if [ -f target/release/libterminusdb_store_prolog.so ]; then
-        cp target/release/libterminusdb_store_prolog.so $out/lib/
-      elif [ -f target/release/libterminusdb_store_prolog.dylib ]; then
-        cp target/release/libterminusdb_store_prolog.dylib $out/lib/
+      if [ -f target/release/libterminusdb_dylib.so ]; then
+        cp target/release/libterminusdb_dylib.so $out/lib/
+      elif [ -f target/release/libterminusdb_dylib.dylib ]; then
+        cp target/release/libterminusdb_dylib.dylib $out/lib/
       fi
     '';
   };
@@ -69,35 +85,68 @@ stdenv.mkDerivation rec {
   buildInputs = [
     swi-prolog
     openssl
+    libjwt
   ];
 
   # Prevent network access during build
   __noChroot = false;
 
+  # Patch the Makefile to skip Rust build (we built it separately)
+  postPatch = ''
+    # Replace the Rust build rule with a no-op
+    substituteInPlace distribution/Makefile.prolog \
+      --replace-fail $'$(RUST_TARGET):\n\t@$(MAKE) -f distribution/Makefile.rust $@' \
+                     $'$(RUST_TARGET):\n\t@echo "Using pre-built Rust library from Nix"'
+
+    # Add -p foreign flag to tell SWI-Prolog where to find librust
+    substituteInPlace distribution/Makefile.prolog \
+      --replace-fail '-f src/bootstrap.pl' '-p foreign=src/rust -f src/bootstrap.pl'
+  '';
+
   preBuild = ''
     # Make git available for version detection
     export HOME=$TMPDIR
 
-    # Link the Rust backend library
-    mkdir -p target/release
-    if [ -f ${rustBackend}/lib/libterminusdb_store_prolog.so ]; then
-      ln -s ${rustBackend}/lib/libterminusdb_store_prolog.so target/release/
-    elif [ -f ${rustBackend}/lib/libterminusdb_store_prolog.dylib ]; then
-      ln -s ${rustBackend}/lib/libterminusdb_store_prolog.dylib target/release/
+    echo "=== PREBULD HOOK STARTING ==="
+
+    # Link the Rust backend library where the Makefile expects it
+    mkdir -p src/rust
+    if [ -f ${rustBackend}/lib/libterminusdb_dylib.so ]; then
+      ln -s ${rustBackend}/lib/libterminusdb_dylib.so src/rust/librust.so
+      # Touch it to ensure make sees it as up-to-date
+      touch -h src/rust/librust.so
+      echo "DEBUG: Created symlink src/rust/librust.so -> ${rustBackend}/lib/libterminusdb_dylib.so"
+      ls -la src/rust/
+    elif [ -f ${rustBackend}/lib/libterminusdb_dylib.dylib ]; then
+      ln -s ${rustBackend}/lib/libterminusdb_dylib.dylib src/rust/librust.dylib
+      touch -h src/rust/librust.dylib
+      echo "DEBUG: Created symlink src/rust/librust.dylib -> ${rustBackend}/lib/libterminusdb_dylib.dylib"
+      ls -la src/rust/
+    else
+      echo "ERROR: No Rust backend library found!"
+      ls -la ${rustBackend}/lib/ || echo "Backend lib directory doesn't exist"
     fi
   '';
 
   buildPhase = ''
     runHook preBuild
 
-    # Install required Prolog packs
-    # Note: These may need to be fetched separately in Nix
-    # For now, attempt to install them
-    make install-tus || echo "Warning: tus pack installation failed"
-    make install-jwt || echo "Warning: jwt_io pack installation failed"
+    # Install required Prolog packs from pre-fetched sources
+    mkdir -p .deps
+    cp -r ${tusPack} .deps/tus
+    cp -r ${jwtPack} .deps/jwt_io
+    chmod -R +w .deps
+
+    # Create pack directory
+    mkdir -p $HOME/.local/share/swi-prolog/pack
+
+    # Install packs using SWI-Prolog's pack_install (non-interactive)
+    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(tus, [silent(true)]), pack_install('file://$PWD/.deps/tus', [upgrade(true), silent(true), interactive(false)]), pack_info(tus), halt."
+    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(jwt_io, [silent(true)]), pack_install('file://$PWD/.deps/jwt_io', [upgrade(true), silent(true), interactive(false)]), pack_info(jwt_io), halt."
 
     # Build the standalone binary using the production target
-    # This uses distribution/Makefile.prolog
+    # This uses distribution/Makefile.prolog with our patches
+    # The -p foreign=src/rust flag tells SWI-Prolog where to find librust
     make
 
     runHook postBuild
