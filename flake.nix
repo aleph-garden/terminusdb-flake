@@ -18,7 +18,8 @@
       };
 
       flake = {
-        nixosModules.default = { };
+        nixosModules.default = import ./modules/nixos;
+        nixosModules.terminusdb = import ./modules/nixos;
         homeManagerModules.default = { };
       };
     };
