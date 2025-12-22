@@ -102,13 +102,10 @@ stdenv.mkDerivation rec {
     # Remove --quiet to see build output
     substituteInPlace distribution/Makefile.prolog \
       --replace-fail '-f src/bootstrap.pl' '-p foreign=src/rust -f src/bootstrap.pl' \
-      --replace-fail '--quiet' ''
+      --replace-fail '--quiet' ""
   '';
 
   preBuild = ''
-    # Make git available for version detection
-    export HOME=$TMPDIR
-
     echo "=== PREBULD HOOK STARTING ==="
 
     # Link the Rust backend library where the Makefile expects it
@@ -133,6 +130,12 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     runHook preBuild
 
+    echo "=== BUILD PHASE STARTING (rebuild to see output) ==="
+
+    # Set HOME to a writable directory for SWI-Prolog pack installation
+    export HOME=$PWD/.home
+    mkdir -p $HOME
+
     # Install required Prolog packs from pre-fetched sources
     mkdir -p .deps
     cp -r ${tusPack} .deps/tus
@@ -149,7 +152,9 @@ stdenv.mkDerivation rec {
     # Build the standalone binary using the production target
     # This uses distribution/Makefile.prolog with our patches
     # The -p foreign=src/rust flag tells SWI-Prolog where to find librust
-    echo "=== Building TerminusDB standalone binary ==="
+    echo "=== Building TerminusDB standalone binary (verbose mode) ==="
+    echo "PWD: $PWD"
+    echo "HOME: $HOME"
     make
 
     echo "=== Files created after build ==="
