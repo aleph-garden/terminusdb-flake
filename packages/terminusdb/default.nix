@@ -140,9 +140,9 @@ stdenv.mkDerivation rec {
     # Create pack directory
     mkdir -p $HOME/.local/share/swi-prolog/pack
 
-    # Install packs using SWI-Prolog's pack_install (non-interactive)
-    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(tus, [silent(true)]), pack_install('file://$PWD/.deps/tus', [upgrade(true), silent(true), interactive(false)]), pack_info(tus), halt."
-    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(jwt_io, [silent(true)]), pack_install('file://$PWD/.deps/jwt_io', [upgrade(true), silent(true), interactive(false)]), pack_info(jwt_io), halt."
+    # Install packs using SWI-Prolog's pack_install (non-interactive, skip tests)
+    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(tus, [silent(true)]), pack_install('file://$PWD/.deps/tus', [upgrade(true), silent(true), interactive(false), test(false)]), pack_info(tus), halt."
+    ${swi-prolog}/bin/swipl --on-error=halt --on-warning=halt -g "pack_remove(jwt_io, [silent(true)]), pack_install('file://$PWD/.deps/jwt_io', [upgrade(true), silent(true), interactive(false), test(false)]), pack_info(jwt_io), halt."
 
     # Build the standalone binary using the production target
     # This uses distribution/Makefile.prolog with our patches
