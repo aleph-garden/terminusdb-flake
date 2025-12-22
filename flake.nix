@@ -16,6 +16,13 @@
           default = self'.packages.terminusdb;
         };
 
+        checks = {
+          nixos-test = import ./tests/nixos-test.nix {
+            inherit pkgs;
+            terminusdb = inputs.self;
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             nil # Nix LSP
