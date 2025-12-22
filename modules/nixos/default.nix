@@ -11,7 +11,7 @@ in
     openFirewall = mkOption {
       type = types.bool;
       default = false;
-      description = "Open firewall port for TerminusDB";
+      description = lib.mdDoc "Open firewall port for TerminusDB";
     };
   };
 
