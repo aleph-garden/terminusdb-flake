@@ -12,7 +12,8 @@
 
       perSystem = { config, self', inputs', pkgs, system, ... }: {
         packages = {
-          # terminusdb package will be added in Task 3
+          terminusdb = pkgs.callPackage ./packages/terminusdb { };
+          default = self'.packages.terminusdb;
         };
       };
 
