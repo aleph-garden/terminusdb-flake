@@ -9,3 +9,4 @@ worktrees/
 # Editor
 .direnv/
 .envrc
+storage/
