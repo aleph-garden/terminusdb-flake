@@ -13,13 +13,13 @@ A Nix flake providing TerminusDB packages and NixOS/home-manager modules for eas
 
 ### Using as a Flake Input
 
-Add to your `flake.nix`:
+Add to your `flake.nix` (replace `YOUR_USERNAME` with your GitHub username):
 
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    terminusdb.url = "github:yourusername/terminusdb-flake";
+    terminusdb.url = "github:YOUR_USERNAME/terminusdb-flake";
   };
 
   outputs = { self, nixpkgs, terminusdb, ... }: {
@@ -33,11 +33,11 @@ Add to your `flake.nix`:
 Add the module to your NixOS configuration:
 
 ```nix
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
-    terminusdb.nixosModules.default
+    inputs.terminusdb.nixosModules.default
   ];
 
   services.terminusdb = {
@@ -62,11 +62,11 @@ After rebuilding your system, TerminusDB will be available at `http://127.0.0.1:
 Add the module to your home-manager configuration:
 
 ```nix
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
-    terminusdb.homeManagerModules.default
+    inputs.terminusdb.homeManagerModules.default
   ];
 
   services.terminusdb = {
@@ -90,14 +90,14 @@ systemctl --user start terminusdb
 
 ### Direct Package Usage
 
-Use TerminusDB directly without the service:
+Use TerminusDB directly without the service (replace `YOUR_USERNAME` with your GitHub username):
 
 ```bash
 # Run TerminusDB in a Nix shell
-nix run github:yourusername/terminusdb-flake
+nix run github:YOUR_USERNAME/terminusdb-flake
 
 # Install to your profile
-nix profile install github:yourusername/terminusdb-flake
+nix profile install github:YOUR_USERNAME/terminusdb-flake
 ```
 
 ## Configuration Options
@@ -137,11 +137,11 @@ See the `examples/` directory for complete configuration examples:
 
 ## Development
 
-To develop or test this flake:
+To develop or test this flake (replace `YOUR_USERNAME` with your GitHub username):
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/terminusdb-flake.git
+git clone https://github.com/YOUR_USERNAME/terminusdb-flake.git
 cd terminusdb-flake
 
 # Enter the development shell

@@ -1,7 +1,10 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
-  # Add the TerminusDB flake to your inputs, then:
+  imports = [
+    inputs.terminusdb.homeManagerModules.default
+  ];
+
   services.terminusdb = {
     enable = true;
     port = 6363;

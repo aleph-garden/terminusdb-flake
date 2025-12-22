@@ -1,11 +1,10 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
-    # ... your other imports
+    inputs.terminusdb.nixosModules.default
   ];
 
-  # Add the TerminusDB flake to your inputs, then:
   services.terminusdb = {
     enable = true;
     port = 6363;
