@@ -91,6 +91,9 @@ stdenv.mkDerivation rec {
   # Prevent network access during build
   __noChroot = false;
 
+  # Don't strip the binary - it contains embedded Prolog state
+  dontStrip = true;
+
   # Patch the Makefile to skip Rust build (we built it separately)
   postPatch = ''
     # Replace the Rust build rule with a no-op
