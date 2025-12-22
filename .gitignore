@@ -1,0 +1,11 @@
+# Nix build results
+result
+result-*
+
+# Worktrees
+.worktrees/
+worktrees/
+
+# Editor
+.direnv/
+.envrc
