@@ -99,8 +99,10 @@ stdenv.mkDerivation rec {
                      $'$(RUST_TARGET):\n\t@echo "Using pre-built Rust library from Nix"'
 
     # Add -p foreign flag to tell SWI-Prolog where to find librust
+    # Remove --quiet to see build output
     substituteInPlace distribution/Makefile.prolog \
-      --replace-fail '-f src/bootstrap.pl' '-p foreign=src/rust -f src/bootstrap.pl'
+      --replace-fail '-f src/bootstrap.pl' '-p foreign=src/rust -f src/bootstrap.pl' \
+      --replace-fail '--quiet' ''
   '';
 
   preBuild = ''
@@ -147,7 +149,12 @@ stdenv.mkDerivation rec {
     # Build the standalone binary using the production target
     # This uses distribution/Makefile.prolog with our patches
     # The -p foreign=src/rust flag tells SWI-Prolog where to find librust
+    echo "=== Building TerminusDB standalone binary ==="
     make
+
+    echo "=== Files created after build ==="
+    ls -lh terminusdb* 2>/dev/null || echo "No terminusdb files found"
+    file terminusdb 2>/dev/null || echo "terminusdb binary not found"
 
     runHook postBuild
   '';
