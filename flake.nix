@@ -15,6 +15,19 @@
           terminusdb = pkgs.callPackage ./packages/terminusdb { };
           default = self'.packages.terminusdb;
         };
+
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            nil # Nix LSP
+            nixpkgs-fmt
+            self'.packages.terminusdb
+          ];
+
+          shellHook = ''
+            echo "TerminusDB development environment"
+            echo "Available: terminusdb"
+          '';
+        };
       };
 
       flake = {
