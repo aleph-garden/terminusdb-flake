@@ -51,7 +51,7 @@ in
       fi
 
       if [ ! -d "${cfg.dataDir}/db" ]; then
-        $DRY_RUN_CMD ${cfg.package}/bin/terminusdb store init
+        $DRY_RUN_CMD sh -c "cd ${cfg.dataDir} && env TERMINUSDB_SERVER_DB_PATH=${cfg.dataDir} ${cfg.package}/bin/terminusdb store init"
       fi
     '';
   };
