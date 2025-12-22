@@ -109,31 +109,23 @@ stdenv.mkDerivation rec {
   '';
 
   preBuild = ''
-    echo "=== PREBULD HOOK STARTING ==="
-
     # Link the Rust backend library where the Makefile expects it
     mkdir -p src/rust
     if [ -f ${rustBackend}/lib/libterminusdb_dylib.so ]; then
       ln -s ${rustBackend}/lib/libterminusdb_dylib.so src/rust/librust.so
-      # Touch it to ensure make sees it as up-to-date
       touch -h src/rust/librust.so
-      echo "DEBUG: Created symlink src/rust/librust.so -> ${rustBackend}/lib/libterminusdb_dylib.so"
-      ls -la src/rust/
     elif [ -f ${rustBackend}/lib/libterminusdb_dylib.dylib ]; then
       ln -s ${rustBackend}/lib/libterminusdb_dylib.dylib src/rust/librust.dylib
       touch -h src/rust/librust.dylib
-      echo "DEBUG: Created symlink src/rust/librust.dylib -> ${rustBackend}/lib/libterminusdb_dylib.dylib"
-      ls -la src/rust/
     else
       echo "ERROR: No Rust backend library found!"
       ls -la ${rustBackend}/lib/ || echo "Backend lib directory doesn't exist"
+      exit 1
     fi
   '';
 
   buildPhase = ''
     runHook preBuild
-
-    echo "=== BUILD PHASE STARTING (rebuild to see output) ==="
 
     # Set HOME to a writable directory for SWI-Prolog pack installation
     export HOME=$PWD/.home
@@ -155,14 +147,7 @@ stdenv.mkDerivation rec {
     # Build the standalone binary using the production target
     # This uses distribution/Makefile.prolog with our patches
     # The -p foreign=src/rust flag tells SWI-Prolog where to find librust
-    echo "=== Building TerminusDB standalone binary (verbose mode) ==="
-    echo "PWD: $PWD"
-    echo "HOME: $HOME"
     make
-
-    echo "=== Files created after build ==="
-    ls -lh terminusdb* 2>/dev/null || echo "No terminusdb files found"
-    file terminusdb 2>/dev/null || echo "terminusdb binary not found"
 
     runHook postBuild
   '';
@@ -174,18 +159,35 @@ stdenv.mkDerivation rec {
 
     # Install the standalone binary
     if [ -f terminusdb ]; then
-      install -m755 terminusdb $out/bin/terminusdb
+      install -m755 terminusdb $out/bin/.terminusdb-unwrapped
     else
       echo "Error: terminusdb binary not found after build"
       exit 1
     fi
 
-    # Wrap the binary to set up runtime environment
-    wrapProgram $out/bin/terminusdb \
-      --prefix PATH : ${lib.makeBinPath [ git ]} \
-      --set TERMINUSDB_SERVER_NAME "terminusdb-nix" \
-      --set TERMINUSDB_SERVER_PORT "6363" \
-      --set TERMINUSDB_SERVER_IP "127.0.0.1"
+    # Create a wrapper script that properly invokes the Prolog saved state
+    # The saved state is embedded in the binary, but we need to invoke it with
+    # the correct arguments to run cli_toplevel with command-line args
+    cat > $out/bin/terminusdb << EOF
+#!${stdenv.shell}
+# TerminusDB launcher script
+# This wrapper ensures the saved Prolog state runs cli_toplevel with args
+
+# Get the directory where this script is located
+DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+
+# Set default environment variables
+export TERMINUSDB_SERVER_NAME="terminusdb-nix"
+export TERMINUSDB_SERVER_PORT="6363"
+export TERMINUSDB_SERVER_IP="127.0.0.1"
+export PATH="${lib.makeBinPath [ git ]}:\$PATH"
+
+# Run the TerminusDB binary with arguments passed after --
+# This ensures arguments go to cli_toplevel via the argv flag
+exec "\$DIR/.terminusdb-unwrapped" -- "\$@"
+EOF
+
+    chmod +x $out/bin/terminusdb
 
     runHook postInstall
   '';
