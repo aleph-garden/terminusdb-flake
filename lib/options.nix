@@ -1,9 +1,10 @@
-{ lib, pkgs, ... }:
-
-with lib;
-
 {
-  mkTerminusDBOptions = { isSystem ? true }: {
+  lib,
+  pkgs,
+  ...
+}:
+with lib; {
+  mkTerminusDBOptions = {isSystem ? true}: {
     enable = mkEnableOption (lib.mdDoc "TerminusDB database server");
 
     package = mkOption {
@@ -38,7 +39,7 @@ with lib;
 
     extraConfig = mkOption {
       type = types.attrsOf types.str;
-      default = { };
+      default = {};
       example = literalExpression ''
         {
           TERMINUSDB_SERVER_NAME = "my-server";

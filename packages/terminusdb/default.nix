@@ -1,22 +1,22 @@
-{ lib
-, stdenv
-, fetchFromGitHub
-, swi-prolog
-, rustPlatform
-, openssl
-, pkg-config
-, git
-, makeWrapper
-, m4
-, gmp
-, protobuf
-, libclang
-, llvmPackages
-, libjwt
-# Optional features
-, withDashboard ? false  # Dashboard is deprecated, disabled by default
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  swi-prolog,
+  rustPlatform,
+  openssl,
+  pkg-config,
+  git,
+  makeWrapper,
+  m4,
+  gmp,
+  protobuf,
+  libclang,
+  llvmPackages,
+  libjwt,
+  # Optional features
+  withDashboard ? false, # Dashboard is deprecated, disabled by default
 }:
-
 stdenv.mkDerivation rec {
   pname = "terminusdb";
   version = "12.0.2";
@@ -52,8 +52,8 @@ stdenv.mkDerivation rec {
 
     cargoHash = "sha256-zF506S4SiWx/uYyN2Trm4XPVUIU2K/qoNSjfKthLVuw=";
 
-    nativeBuildInputs = [ pkg-config m4 protobuf swi-prolog ];
-    buildInputs = [ openssl gmp ];
+    nativeBuildInputs = [pkg-config m4 protobuf swi-prolog];
+    buildInputs = [openssl gmp];
 
     # Bindgen needs libclang and system headers
     LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
@@ -169,20 +169,20 @@ stdenv.mkDerivation rec {
   '';
 
   installPhase = ''
-    runHook preInstall
+        runHook preInstall
 
-    mkdir -p $out/bin
-    ${lib.optionalString withDashboard "mkdir -p $out/dashboard/assets"}
+        mkdir -p $out/bin
+        ${lib.optionalString withDashboard "mkdir -p $out/dashboard/assets"}
 
-    # Install the standalone binary
-    if [ -f terminusdb ]; then
-      install -m755 terminusdb $out/bin/.terminusdb-unwrapped
-    else
-      echo "Error: terminusdb binary not found after build"
-      exit 1
-    fi
+        # Install the standalone binary
+        if [ -f terminusdb ]; then
+          install -m755 terminusdb $out/bin/.terminusdb-unwrapped
+        else
+          echo "Error: terminusdb binary not found after build"
+          exit 1
+        fi
 
-    ${lib.optionalString withDashboard ''
+        ${lib.optionalString withDashboard ''
       # Install dashboard files (web UI) at $out/dashboard
       # This matches the path structure that top_level_directory expects
       # Note: Dashboard is deprecated - use DFRNT Studio for production
@@ -190,37 +190,37 @@ stdenv.mkDerivation rec {
       install -m644 dashboard/src/output.css $out/dashboard/assets/
     ''}
 
-    # Create a wrapper script that properly invokes the Prolog saved state
-    # The saved state is embedded in the binary, but we need to invoke it with
-    # the correct arguments to run cli_toplevel with command-line args
-    cat > $out/bin/terminusdb << EOF
-#!${stdenv.shell}
-# TerminusDB launcher script
-# This wrapper ensures the saved Prolog state runs cli_toplevel with args
+        # Create a wrapper script that properly invokes the Prolog saved state
+        # The saved state is embedded in the binary, but we need to invoke it with
+        # the correct arguments to run cli_toplevel with command-line args
+        cat > $out/bin/terminusdb << EOF
+    #!${stdenv.shell}
+    # TerminusDB launcher script
+    # This wrapper ensures the saved Prolog state runs cli_toplevel with args
 
-# Get the directory where this script is located
-DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+    # Get the directory where this script is located
+    DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 
-# Set default environment variables
-export TERMINUSDB_SERVER_NAME="terminusdb-nix"
-export TERMINUSDB_SERVER_PORT="6363"
-export TERMINUSDB_SERVER_IP="127.0.0.1"
-export PATH="${lib.makeBinPath [ git ]}:\$PATH"
+    # Set default environment variables
+    export TERMINUSDB_SERVER_NAME="terminusdb-nix"
+    export TERMINUSDB_SERVER_PORT="6363"
+    export TERMINUSDB_SERVER_IP="127.0.0.1"
+    export PATH="${lib.makeBinPath [git]}:\$PATH"
 
-${lib.optionalString withDashboard ''
-# Set absolute path to dashboard - this gets read by load_paths.pl at runtime
-# Note: Dashboard is deprecated, enable only for compatibility
-export TERMINUSDB_DASHBOARD_PATH="$out/dashboard"
-''}
+    ${lib.optionalString withDashboard ''
+      # Set absolute path to dashboard - this gets read by load_paths.pl at runtime
+      # Note: Dashboard is deprecated, enable only for compatibility
+      export TERMINUSDB_DASHBOARD_PATH="$out/dashboard"
+    ''}
 
-# Run the TerminusDB binary with arguments passed after --
-# This ensures arguments go to cli_toplevel via the argv flag
-exec "\$DIR/.terminusdb-unwrapped" -- "\$@"
-EOF
+    # Run the TerminusDB binary with arguments passed after --
+    # This ensures arguments go to cli_toplevel via the argv flag
+    exec "\$DIR/.terminusdb-unwrapped" -- "\$@"
+    EOF
 
-    chmod +x $out/bin/terminusdb
+        chmod +x $out/bin/terminusdb
 
-    runHook postInstall
+        runHook postInstall
   '';
 
   meta = with lib; {
@@ -238,7 +238,7 @@ EOF
     '';
     homepage = "https://terminusdb.com";
     license = licenses.asl20;
-    maintainers = [ ];
+    maintainers = [];
     platforms = platforms.unix;
     mainProgram = "terminusdb";
   };

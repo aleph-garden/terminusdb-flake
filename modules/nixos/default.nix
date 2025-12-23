@@ -1,19 +1,22 @@
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
-  cfg = config.services.terminusdb;
-  optionsLib = import ../../lib/options.nix { inherit lib pkgs; };
-in
 {
-  options.services.terminusdb = optionsLib.mkTerminusDBOptions { isSystem = true; } // {
-    openFirewall = mkOption {
-      type = types.bool;
-      default = false;
-      description = lib.mdDoc "Open firewall port for TerminusDB";
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
+  cfg = config.services.terminusdb;
+  optionsLib = import ../../lib/options.nix {inherit lib pkgs;};
+in {
+  options.services.terminusdb =
+    optionsLib.mkTerminusDBOptions {isSystem = true;}
+    // {
+      openFirewall = mkOption {
+        type = types.bool;
+        default = false;
+        description = lib.mdDoc "Open firewall port for TerminusDB";
+      };
     };
-  };
 
   config = mkIf cfg.enable {
     users.users.terminusdb = {
@@ -24,18 +27,20 @@ in
       createHome = true;
     };
 
-    users.groups.terminusdb = { };
+    users.groups.terminusdb = {};
 
     systemd.services.terminusdb = {
       description = "TerminusDB Graph Database Server";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
+      wantedBy = ["multi-user.target"];
+      after = ["network.target"];
 
-      environment = {
-        TERMINUSDB_SERVER_DB_PATH = cfg.dataDir;
-        TERMINUSDB_SERVER_PORT = toString cfg.port;
-        TERMINUSDB_SERVER_IP = cfg.address;
-      } // cfg.extraConfig;
+      environment =
+        {
+          TERMINUSDB_SERVER_DB_PATH = cfg.dataDir;
+          TERMINUSDB_SERVER_PORT = toString cfg.port;
+          TERMINUSDB_SERVER_IP = cfg.address;
+        }
+        // cfg.extraConfig;
 
       serviceConfig = {
         Type = "simple";
@@ -55,7 +60,7 @@ in
         ProtectKernelTunables = true;
         ProtectKernelModules = true;
         ProtectControlGroups = true;
-        ReadWritePaths = [ cfg.dataDir ];
+        ReadWritePaths = [cfg.dataDir];
       };
 
       preStart = ''
@@ -70,7 +75,7 @@ in
     };
 
     networking.firewall = mkIf cfg.openFirewall {
-      allowedTCPPorts = [ cfg.port ];
+      allowedTCPPorts = [cfg.port];
     };
   };
 }

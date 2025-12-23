@@ -1,12 +1,16 @@
-{ pkgs ? import <nixpkgs> { }
-, terminusdb
+{
+  pkgs ? import <nixpkgs> {},
+  terminusdb,
 }:
-
 pkgs.testers.nixosTest {
   name = "terminusdb-basic";
 
-  nodes.machine = { config, pkgs, ... }: {
-    imports = [ terminusdb.nixosModules.terminusdb ];
+  nodes.machine = {
+    config,
+    pkgs,
+    ...
+  }: {
+    imports = [terminusdb.nixosModules.terminusdb];
 
     services.terminusdb = {
       enable = true;
